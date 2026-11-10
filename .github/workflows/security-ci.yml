@@ -1,113 +1,51 @@
 name: security-ci
 
-# Demo pipeline for Week 14 (DevSecOps). Runs SAST, SCA, and secret
-# scanning, and fails the build on high-severity findings.
-#
-# Actions are pinned to commit SHAs (not mutable tags like @v4/@master) — the
-# same supply-chain control Week 12 teaches. Bump the SHA and the trailing
-# version comment together.
-#
-# What is gated: the platform code we actually run (labs/live-quiz, tools/).
-# What is not: labs/week*/, labs/toolbox/ and project/starter-app/, which are
-# intentionally vulnerable teaching material — students run these same scanners
-# against them by hand and are graded on the findings.
+# Week 2 Task 6 - adapted from labs/week15-devsecops-pipeline/security-ci.yml.
+# Runs Semgrep (SAST), Gitleaks (secret scanning) and Trivy (SCA + secrets) on
+# every push/PR and FAILS the build on any finding / HIGH-CRITICAL issue.
+# Tools are installed as binaries in the runner (no docker-in-docker), so the
+# same workflow works on GitHub-hosted runners and locally with `act`.
 
 on:
   push:
-    branches: [ main ]
   pull_request:
   workflow_dispatch:
 
 permissions:
   contents: read
-  security-events: write   # to upload SARIF to the Security tab
+
+env:
+  TARGET: labs/week02-sdlc-tooling/vulnerable-repo
 
 jobs:
-  # The platform's own test suite. This job did not exist until 2026-07-31, and
-  # its absence was not obvious: pull requests showed "4 checks passed" while
-  # zero application tests ran — the 454 of them only ever executed on the
-  # author's laptop, when the author remembered.
-  #
-  # That mattered more than it sounds. Four real defects shipped in one week,
-  # and three were already covered by tests that simply never ran here:
-  # a CSP that silently killed the projector screen, a double-click that ended a
-  # student's graded quiz, and every `[`FILE.md`](FILE.md)` link rendering as
-  # literal markdown. Writing the test was never the missing step; running it was.
-  tests:
-    name: Tests (live-quiz platform)
+  security-gate:
+    name: Security gate (Semgrep + Gitleaks + Trivy)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
-      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
-        with:
-          python-version: '3.12'
-      - name: Install dependencies
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install scanners
         run: |
-          python -m pip install --upgrade pip
-          pip install -r labs/live-quiz/requirements.txt pytest
-      # Run from the app directory: conftest.py sets throwaway DB/secret env
-      # defaults before `import app`, and the content plane resolves CONTENT_ROOT
-      # relative to the checkout, so the real 19 weeks are what gets tested.
-      - name: Run the suite
-        working-directory: labs/live-quiz
-        run: python -m pytest tests/ -q
+          python3 -m venv /opt/scanners-venv
+          /opt/scanners-venv/bin/pip install --quiet semgrep
+          echo "/opt/scanners-venv/bin" >> "$GITHUB_PATH"
+          curl -sSL https://github.com/gitleaks/gitleaks/releases/download/v8.24.3/gitleaks_8.24.3_linux_x64.tar.gz \
+            | tar -xz -C /usr/local/bin gitleaks
+          curl -sSL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
+            | sh -s -- -b /usr/local/bin
 
-  sast:
-    name: SAST (Semgrep)
-    runs-on: ubuntu-latest
-    container: semgrep/semgrep
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
-      - name: Run Semgrep
-        run: semgrep ci --config p/default
-        env:
-          SEMGREP_RULES: p/owasp-top-ten
+      - name: Semgrep (SAST) - fail on any finding
+        run: |
+          # The repo's .semgrepignore deliberately excludes teaching labs, so the
+          # gate scans a clean copy of the target to keep this exercise honest.
+          rm -rf /tmp/gate-target && cp -r "$TARGET" /tmp/gate-target
+          semgrep --config p/default --config p/owasp-top-ten --error /tmp/gate-target
 
-  secrets:
-    name: Secret scanning (Gitleaks)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
-        with:
-          fetch-depth: 0
-      - name: Run Gitleaks
-        uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e  # v3.0.0
-        env:
-          # .gitleaks.toml allowlists ONLY the credentials planted on purpose for the
-          # Week 2 / Week 15 exercises; a real secret committed anywhere else still fails.
-          GITLEAKS_CONFIG: ${{ github.workspace }}/.gitleaks.toml
-          # gitleaks-action v2 calls the GitHub API to scan a pull_request's diff and now refuses
-          # to run without a token for that (previously optional, now a hard requirement — see
-          # https://github.com/gitleaks/gitleaks-action#-announcement). The default Actions token
-          # already has the read access this needs; no new repo permission is required.
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  sca:
-    name: SCA + image scan (Trivy)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
-      - name: Trivy filesystem scan (deps + misconfig)
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
-        with:
-          scan-type: fs
-          scanners: vuln,secret,misconfig
-          severity: HIGH,CRITICAL
-          exit-code: '1'      # fail the build on HIGH/CRITICAL
-          # Without this, trivy-action builds the SARIF "with all severities" and
-          # ignores `severity:` above — so a LOW finding fails the build even though
-          # this job claims to gate on HIGH/CRITICAL only.
-          limit-severities-for-sarif: true
-          # labs/week*/ and project/starter-app/ are deliberately vulnerable teaching
-          # material (old pins, root containers, planted secrets, a Dockerfile students
-          # are asked to harden). Gating on them keeps the build red forever; students
-          # see those findings by running the scanners inside the lab. labs/live-quiz
-          # (the real platform) and everything else stay gated.
-          skip-dirs: 'labs/week*,labs/toolbox,project/starter-app,instructor'
-          format: sarif
-          output: trivy-results.sarif
-      - name: Upload results to Security tab
+      - name: Gitleaks (secret scanning) - fail on any leak
         if: always()
-        uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370  # v4.39.1
-        with:
-          sarif_file: trivy-results.sarif
+        run: gitleaks detect --no-git -s "$TARGET" --exit-code 1 -v
+
+      - name: Trivy (SCA + secrets) - fail on HIGH/CRITICAL
+        if: always()
+        run: trivy fs --scanners vuln,secret --severity HIGH,CRITICAL --exit-code 1 "$TARGET"

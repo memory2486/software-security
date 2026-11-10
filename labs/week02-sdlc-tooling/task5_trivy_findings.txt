@@ -1,0 +1,20 @@
+TASK 5 - Trivy fs (vuln+secret, HIGH/CRITICAL) - NoteVault
+Total: 17 (HIGH: 16, CRITICAL: 1)  secrets: 0
+package    installed  id                 severity  title
+Flask      2.0.1      CVE-2023-30861     HIGH      flask: Possible disclosure of permanent session cookie due
+PyJWT      1.7.1      CVE-2026-102268    CRITICAL  pyjwt: PyJWT: Authentication bypass via improper public ke
+PyJWT      1.7.1      CVE-2022-29217     HIGH      python-jwt: Key confusion through non-blocklisted public k
+PyJWT      1.7.1      CVE-2026-102267    HIGH      pyjwt: pyjwt: Verification key substitution via unvalidate
+PyJWT      1.7.1      CVE-2026-32597     HIGH      pyjwt: PyJWT accepts unknown `crit` header extensions (RFC
+PyJWT      1.7.1      CVE-2026-48526     HIGH      python-pyjwt: PyJWT: Authentication bypass due to forged J
+PyJWT      1.7.1      GHSA-pxh4-856f-4h89 HIGH      PyJWT: HS256/384/512 verify accepts empty HMAC key via oct
+Werkzeug   2.0.1      CVE-2023-25577     HIGH      python-werkzeug: high resource usage when parsing multipar
+Werkzeug   2.0.1      CVE-2024-34069     HIGH      python-werkzeug: user may execute code on a developer's ma
+urllib3    1.26.4     CVE-2021-33503     HIGH      python-urllib3: ReDoS in the parsing of authority part of 
+urllib3    1.26.4     CVE-2023-43804     HIGH      python-urllib3: Cookie request header isn't stripped durin
+urllib3    1.26.4     CVE-2025-66418     HIGH      urllib3: urllib3: Unbounded decompression chain leads to r
+urllib3    1.26.4     CVE-2025-66471     HIGH      urllib3: urllib3 Streaming API improperly handles highly c
+urllib3    1.26.4     CVE-2026-21441     HIGH      urllib3: urllib3 vulnerable to decompression-bomb safeguar
+urllib3    1.26.4     CVE-2026-44431     HIGH      urllib3: urllib3: Information disclosure via cross-origin 
+urllib3    1.26.4     CVE-2026-97687     HIGH      urllib3: urllib3: Traffic interception via HTTPS proxy TLS
+urllib3    1.26.4     CVE-2026-97689     HIGH      urllib3: urllib3: Denial of Service via unbounded memory a

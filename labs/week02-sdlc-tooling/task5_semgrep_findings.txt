@@ -1,0 +1,13 @@
+TASK 5 findings - NoteVault (../../project/starter-app) - 31 Semgrep findings collapsed to distinct issues
+tool      location        CWE      rule that fired / issue
+Semgrep   app.py:128      CWE-89   tainted-sql-string            login(): username/password concatenated into SQL
+Semgrep   app.py:178      CWE-89   tainted-sql-string            search(): term concatenated into SQL
+Semgrep   app.py:202      CWE-78   subprocess-shell-true         export(): shell=True with fmt from request
+Semgrep   app.py:83       CWE-327  jwt-python-none-alg           JWT decode accepts "none"
+Semgrep   app.py:117      CWE-327  md5-used-as-password          register(): md5 password hash
+Semgrep   app.py:129      CWE-327  md5-used-as-password          login(): md5 password hash
+Semgrep   app.py:134      CWE-522  jwt-python-hardcoded-secret   SECRET hardcoded in source
+Semgrep   app.py:181      CWE-79   raw-html-concat               search results rendered without escaping
+Semgrep   app.py:209      CWE-489  debug-enabled                 app.run(debug=True)
+Semgrep   Dockerfile:12   CWE-250  missing-user                  container runs as root
+Gitleaks  -              -        no leaks found (scanned 11 KB)

@@ -1,0 +1,160 @@
+==> Semgrep (SAST)
+               
+               
+┌─────────────┐
+│ Scan Status │
+└─────────────┘
+  Scanning 2 files tracked by git with 1144 Code rules:
+                                                                                                                        
+  Language      Rules   Files          Origin      Rules                                                                
+ ─────────────────────────────        ───────────────────                                                               
+  <multilang>      49       2          Community    1144                                                                
+  python          273       1                                                                                           
+                                                                                                                        
+                    
+                    
+┌──────────────────┐
+│ 10 Code Findings │
+└──────────────────┘
+               
+    /src/app.py
+    ❯❱ python.django.security.injection.sql.sql-injection-using-db-cursor-execute.sql-injection-db-cursor-execute
+          ❰❰ Blocking ❱❱
+          User-controlled data from a request is passed to 'execute()'. This could lead to a SQL injection and
+          therefore protected information could be leaked. Instead, use django's QuerySets, which are built   
+          with query parameterization and therefore not vulnerable to sql injection. For example, you could   
+          use `Entry.objects.filter(date=2006)`.                                                              
+          Details: https://sg.run/qx7y                                                                        
+                                                                                                              
+           16┆ name = request.args.get("name", "")
+           17┆ con = sqlite3.connect("app.db")
+           18┆ # CWE-89: SQL injection (string formatting into query)
+           19┆ q = "SELECT * FROM users WHERE name = '%s'" % name
+           20┆ return str(con.execute(q).fetchall())
+   
+   ❯❯❱ python.django.security.injection.tainted-sql-string.tainted-sql-string
+          ❰❰ Blocking ❱❱
+          Detected user input used to manually construct a SQL string. This is usually bad practice because 
+          manual construction could accidentally result in a SQL injection. An attacker could use a SQL     
+          injection to steal or modify contents of the database. Instead, use a parameterized query which is
+          available by default in most database engines. Alternatively, consider using the Django object-   
+          relational mappers (ORM) instead of raw SQL queries.                                              
+          Details: https://sg.run/PbZp                                                                      
+                                                                                                            
+           19┆ q = "SELECT * FROM users WHERE name = '%s'" % name
+   
+   ❯❯❱ python.flask.security.injection.tainted-sql-string.tainted-sql-string
+          ❰❰ Blocking ❱❱
+          Detected user input used to manually construct a SQL string. This is usually bad practice because 
+          manual construction could accidentally result in a SQL injection. An attacker could use a SQL     
+          injection to steal or modify contents of the database. Instead, use a parameterized query which is
+          available by default in most database engines. Alternatively, consider using an object-relational 
+          mapper (ORM) such as SQLAlchemy which will protect your queries.                                  
+          Details: https://sg.run/JxZj                                                                      
+                                                                                                            
+           19┆ q = "SELECT * FROM users WHERE name = '%s'" % name
+   
+    ❯❱ python.lang.security.audit.formatted-sql-query.formatted-sql-query
+          ❰❰ Blocking ❱❱
+          Detected possible formatted SQL query. Use parameterized queries instead.
+          Details: https://sg.run/EkWw                                             
+                                                                                   
+           20┆ return str(con.execute(q).fetchall())
+   
+   ❯❯❱ python.sqlalchemy.security.sqlalchemy-execute-raw-query.sqlalchemy-execute-raw-query
+          ❰❰ Blocking ❱❱
+          Avoiding SQL string concatenation: untrusted input concatenated with raw SQL query can result in SQL
+          Injection. In order to execute raw query safely, prepared statement should be used. SQLAlchemy      
+          provides TextualSQL to easily used prepared statement with named parameters. For complex SQL        
+          composition, use SQL Expression Language or Schema Definition Language. In most cases, SQLAlchemy   
+          ORM will be a better option.                                                                        
+          Details: https://sg.run/2b1L                                                                        
+                                                                                                              
+           20┆ return str(con.execute(q).fetchall())
+   
+   ❯❯❱ python.flask.security.injection.subprocess-injection.subprocess-injection
+          ❰❰ Blocking ❱❱
+          Detected user input entering a `subprocess` call unsafely. This could result in a command injection 
+          vulnerability. An attacker could use this vulnerability to execute arbitrary commands on the host,  
+          which allows them to download malware, scan sensitive data, or run any command they wish on the     
+          server. Do not let users choose the command to run. In general, prefer to use Python API versions of
+          system commands. If you must use subprocess, use a dictionary to allowlist a set of commands.       
+          Details: https://sg.run/5gW3                                                                        
+                                                                                                              
+           26┆ return subprocess.check_output("ping -c 1 " + host, shell=True)
+   
+   ❯❯❱ python.lang.security.dangerous-subprocess-use.dangerous-subprocess-use
+          ❰❰ Blocking ❱❱
+          Detected subprocess function 'check_output' with user controlled data. A malicious actor could
+          leverage this to perform command injection. You may consider using 'shlex.escape()'.          
+          Details: https://sg.run/NWxp                                                                  
+                                                                                                        
+           26┆ return subprocess.check_output("ping -c 1 " + host, shell=True)
+   
+   ❯❯❱ python.lang.security.audit.subprocess-shell-true.subprocess-shell-true
+          ❰❰ Blocking ❱❱
+          Found 'subprocess' function 'check_output' with 'shell=True'. This is dangerous because this call 
+          will spawn the command using a shell process. Doing so propagates current shell settings and      
+          variables, which makes it much easier for a malicious actor to execute commands. Use 'shell=False'
+          instead.                                                                                          
+          Details: https://sg.run/J92w                                                                      
+                                                                                                            
+           ▶▶┆ Autofix ▶ False
+           26┆ return subprocess.check_output("ping -c 1 " + host, shell=True)
+   
+    ❯❱ python.lang.security.insecure-hash-algorithms-md5.insecure-hash-algorithm-md5
+          ❰❰ Blocking ❱❱
+          Detected MD5 hash algorithm which is considered insecure. MD5 is not collision resistant and is
+          therefore not suitable as a cryptographic signature. Use SHA256 or SHA3 instead.               
+          Details: https://sg.run/vYrY                                                                   
+                                                                                                         
+           30┆ return hashlib.md5(pw.encode()).hexdigest()
+   
+    ❯❱ python.flask.security.audit.debug-enabled.debug-enabled
+          ❰❰ Blocking ❱❱
+          Detected Flask app with debug=True. Do not deploy to production with this flag enabled as it will   
+          leak sensitive information. Instead, consider using Flask configuration variables or setting 'debug'
+          using system environment variables.                                                                 
+          Details: https://sg.run/dKrd                                                                        
+                                                                                                              
+           33┆ app.run(debug=True)  # CWE-489: debug mode in production
+
+                
+                
+┌──────────────┐
+│ Scan Summary │
+└──────────────┘
+✅ Scan completed successfully.
+ • Findings: 10 (10 blocking)
+ • Rules run: 322
+ • Targets scanned: 2
+ • Parsed lines: ~100.0%
+ • No ignore information available
+Ran 322 rules on 2 files: 10 findings.
+
+==> Gitleaks (secret scanning)
+
+    ○
+    │╲
+    │ ○
+    ○ ░
+    ░    gitleaks
+
+Finding:     AWS_SECRET_ACCESS_KEY = "[1;3;mhK8pQ2mN5vX9wZ3rT6yU1sA4bC7dE0fG2hJ5kL8[0m"
+Secret:      [1;3;mhK8pQ2mN5vX9wZ3rT6yU1sA4bC7dE0fG2hJ5kL8[0m
+RuleID:      generic-api-key
+Entropy:     5.080274
+File:        /repo/app.py
+Line:        11
+Fingerprint: /repo/app.py:generic-api-key:11
+
+Finding:     DB_PASSWORD = "[1;3;mxQ7mK2pL9wR4tY6u[0m"
+Secret:      [1;3;mxQ7mK2pL9wR4tY6u[0m
+RuleID:      generic-api-key
+Entropy:     4.000000
+File:        /repo/app.py
+Line:        12
+Fingerprint: /repo/app.py:generic-api-key:12
+
+[90m3:58PM[0m [32mINF[0m [1mscanned ~1105 bytes (1.11 KB) in 40.1ms[0m
+[90m3:58PM[0m [33mWRN[0m [1mleaks found: 2[0m
